@@ -1,5 +1,6 @@
 package com.koreait.restproject.rest.controller;
 
+import java.io.IOException;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,10 +16,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.google.gson.Gson;
 import com.koreait.restproject.exception.BoardUpdateException;
 import com.koreait.restproject.message.Message;
 import com.koreait.restproject.model.board.service.BoardService;
 import com.koreait.restproject.model.domain.Board;
+import com.koreait.restproject.rest.websocket.MyWebSocketHandler;
+import com.koreait.restproject.rest.websocket.SocketMessage;
 
 import jdk.internal.org.jline.utils.Log;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +33,11 @@ public class BoardController {
 
 	@Autowired
 	private BoardService boardService;
+	
+	@Autowired
+	private MyWebSocketHandler myWebSocketHandler;
+	
+	Gson gson = new Gson();
 	
 	//목록가져오기 요청
 	@GetMapping("/board")	//이미 ResponseBody가 적용된 상태이므로, 
@@ -56,6 +65,16 @@ public class BoardController {
 		
 		boardService.regist(board);
 		
+		//웹소켓을 이용한 브로드캐스트!
+		SocketMessage socketMessage = new SocketMessage();
+		socketMessage.setRequestCode("create");
+		socketMessage.setResultCode(200);
+		socketMessage.setMsg("등록성공");
+		
+		String jsonString = gson.toJson(socketMessage);
+		
+		myWebSocketHandler.broadCast(jsonString);	//but 클라이언트와 서버와 약속된 프로토콜
+		
 		return ResponseEntity.ok().body(board);	//board_id가 이미 채워진 VO
 	}
 	
@@ -69,6 +88,16 @@ public class BoardController {
 		
 		boardService.update(board);
 		
+		//웹소켓을 이용한 브로드캐스트!
+		SocketMessage socketMessage = new SocketMessage();
+		socketMessage.setRequestCode("update");
+		socketMessage.setResultCode(200);
+		socketMessage.setMsg("수정성공");
+		
+		String jsonString = gson.toJson(socketMessage);
+		
+		myWebSocketHandler.broadCast(jsonString);	//but 클라이언트와 서버와 약속된 프로토콜
+		
 		return ResponseEntity.ok().body(board);
 	}
 	
@@ -78,6 +107,15 @@ public class BoardController {
 		boardService.delete(board_id);
 		Message message = new Message();
 		message.setMsg("게시물 삭제 성공");
+		
+		//웹소켓을 이용한 브로드캐스트!
+		SocketMessage socketMessage = new SocketMessage();
+		socketMessage.setRequestCode("delete");
+		socketMessage.setResultCode(200);
+		socketMessage.setMsg("삭제성공");
+		
+		String jsonString = gson.toJson(socketMessage);
+		myWebSocketHandler.broadCast(jsonString);
 		
 		return ResponseEntity.ok().body(message);
 	}
